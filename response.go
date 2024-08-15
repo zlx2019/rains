@@ -10,8 +10,8 @@ type response struct {
 	conn *Connection
 }
 
-// 创建响应流
-func newResponse(c *Connection) *response{
+// 为客户端连接分配响应流
+func wrapResponse(c *Connection) *response{
 	return &response{c}
 }
 

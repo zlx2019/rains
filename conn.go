@@ -49,15 +49,16 @@ func (c *Connection) serve() {
 	// keep-alive 长连接处理
 
 	for i := 0; i < 1; i++ {
-		// 解析出 HTTP Request
+		// 读取连接数据流，解析为 HTTP Request
 		req, err := RequestParse(c)
 		if err != nil {
 			slog.Error("conn unpack request err: %v", err)
 			return
 		}
-		resp := &response{}
+		// 分配连接响应流
+		response := wrapResponse(c)
 		// 处理 HTTP 请求
-		c.serv.Handler.Handle(resp, req)
+		c.serv.Handler.Handle(response, req)
 		if err = c.bufW.Flush(); err != nil {
 			return
 		}

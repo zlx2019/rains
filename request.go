@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"io"
 	"net/url"
 	"strings"
 )
@@ -15,10 +14,6 @@ import (
 // @Author      Zero.
 // @Create      2024-08-14 11:14
 
-const lineEnd = "\r\n"
-const headEnd = "\r\n\r\n"
-const headSep = ':'
-
 // Request 表示 HTTP 请求信息
 type Request struct {
 	//======= 请求行 ========
@@ -26,14 +21,14 @@ type Request struct {
 	RequestURI string // 请求的资源Uri
 	Protocol   string // 协议以及版本
 
-	Headers Header    // 请求头
-	Body    io.Reader // 请求体
+	Headers Headers     // 请求头
+	Body    RequestBody // 请求体
 
-	Url         *url.URL          // 请求URL
-	RemoteAddr  string            // 客户端地址信息
-	conn        *Connection       // 客户端连接
-	cookies     map[string]string //  Cookie 信息
-	queryParams Query             //  Query 查询参数
+	Url         *url.URL    // 请求URL
+	RemoteAddr  string      // 客户端地址信息
+	queryParams Query       // Query 查询信息
+	cookies     Cookie      // Cookie
+	conn        *Connection // 客户端连接
 }
 
 // RequestParse
@@ -65,7 +60,7 @@ func RequestParse(c *Connection) (req *Request, err error) {
 		return
 	}
 
-	req.Body = newResponse(c)
+	//req.Body = newResponse(c)
 
 	return
 }
@@ -91,8 +86,8 @@ func requestLineParse(reader *bufio.Reader) (m string, u string, v string, e err
 // k2:v2\r\n
 // k3:v3\r\n
 // .....\r\n\r\n
-func requestHeadersParse(reader *bufio.Reader) (Header, error) {
-	header := make(Header)
+func requestHeadersParse(reader *bufio.Reader) (Headers, error) {
+	header := make(Headers)
 	for {
 		// 以 \r\n 结尾，读取每一行数据，直到读取到 \r\n\r\n
 		line, err := readLine(reader)
@@ -116,6 +111,8 @@ func requestHeadersParse(reader *bufio.Reader) (Header, error) {
 	}
 	return header, nil
 }
+
+
 
 // 从流中读取一行内容
 func readLine(reader *bufio.Reader) ([]byte, error) {
