@@ -5,12 +5,22 @@ package main
 // @Author      Zero.
 // @Create      2024-08-14 11:15
 
-// HTTP 响应体
+// HTTP 响应流
 type response struct {
-
+	conn *Connection
 }
 
-// ResponseWriter HTTP 响应写入器
-type ResponseWriter interface {
+// 创建响应流
+func newResponse(c *Connection) *response{
+	return &response{c}
+}
 
+// ResponseWriter HTTP 响应流写入器
+type ResponseWriter interface {
+	Write([]byte) (int, error)
+}
+
+// 实现写入函数，向连接中的 写缓冲写入数据
+func (r *response) Write(buf []byte) (int,error) {
+	return r.conn.bufW.Write(buf)
 }

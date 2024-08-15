@@ -19,7 +19,7 @@ const lineEnd = "\r\n"
 const headEnd = "\r\n\r\n"
 const headSep = ':'
 
-// Request 表示一次HTTP请求所有信息
+// Request 表示 HTTP 请求信息
 type Request struct {
 	//======= 请求行 ========
 	Method     string // 请求方法
@@ -29,11 +29,11 @@ type Request struct {
 	Headers Header    // 请求头
 	Body    io.Reader // 请求体
 
-	Url        *url.URL          // 请求URL
-	RemoteAddr string            // 客户端地址信息
-	conn       *Connection       // 客户端连接
-	cookie     map[string]string // 请求 cookie 信息
-	query      map[string]string // 请求 query 信息
+	Url         *url.URL          // 请求URL
+	RemoteAddr  string            // 客户端地址信息
+	conn        *Connection       // 客户端连接
+	cookies     map[string]string //  Cookie 信息
+	queryParams Query             //  Query 查询参数
 }
 
 // RequestParse
@@ -43,7 +43,6 @@ type Request struct {
 //   - 请求头\r\n
 //   - \r\n
 //   - 请求体
-//
 func RequestParse(c *Connection) (req *Request, err error) {
 	req = new(Request)
 	req.conn = c
@@ -56,36 +55,19 @@ func RequestParse(c *Connection) (req *Request, err error) {
 	}
 
 	// 解析Query请求参数
-	req.Url, err = url.ParseRequestURI(req.RequestURI)
-	if err != nil {
+	if err = req.requestQueryParse(); err != nil {
 		return
 	}
-	req.query = requestQueryParse(req.Url.RawQuery)
 
 	// 解析请求头
-	req.Headers, err = headersParse(c.bufR)
+	req.Headers, err = requestHeadersParse(c.bufR)
 	if err != nil {
 		return
 	}
-	fmt.Printf("%v \n", req)
-	return
-}
 
-// HTTP Query 参数解析
-// name=admin&age=18&address=xxx&...
-func requestQueryParse(queryStr string) map[string]string {
-	items := strings.Split(queryStr, "&")
-	query := make(map[string]string, len(items))
-	for _, item := range items {
-		index := strings.IndexByte(item, '=')
-		if index == -1 || index == len(item)-1 {
-			continue
-		}
-		key := strings.TrimSpace(item[:index])
-		value := strings.TrimSpace(item[index+1:])
-		query[key] = value
-	}
-	return query
+	req.Body = newResponse(c)
+
+	return
 }
 
 // 解析 HTTP 请求行
@@ -109,7 +91,7 @@ func requestLineParse(reader *bufio.Reader) (m string, u string, v string, e err
 // k2:v2\r\n
 // k3:v3\r\n
 // .....\r\n\r\n
-func headersParse(reader *bufio.Reader) (Header, error) {
+func requestHeadersParse(reader *bufio.Reader) (Header, error) {
 	header := make(Header)
 	for {
 		// 以 \r\n 结尾，读取每一行数据，直到读取到 \r\n\r\n
