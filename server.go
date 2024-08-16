@@ -38,6 +38,6 @@ func (s *Server) Startup() error {
 			continue
 		}
 		c := wrapConn(conn, s)
-		go c.serve()
+		go c.handle()
 	}
 }

@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"fmt"
 	"io"
 	"log/slog"
 	"net"
@@ -14,30 +15,33 @@ import (
 
 // Connection TCP连接扩展
 type Connection struct {
-	net.Conn
-	// 读缓冲
+	// 限制最多可以从连接中读取多少数据
+	lr *io.LimitedReader
+	// 连接的读缓冲(包装 lr 缓冲)
 	bufR *bufio.Reader
-	limitR *io.LimitedReader
-	// 写缓冲
+	// 连接的写缓冲
 	bufW *bufio.Writer
 
+	// 对于的底层TCP连接
+	net.Conn
+	// 服务端
 	serv *Server
 }
 
 // 建立新的连接
 func wrapConn(conn net.Conn, server *Server) *Connection {
-	lr := &io.LimitedReader{R: conn, N: 1 << 20}
+	lr := &io.LimitedReader{R: conn, N: ConnReadLimitSize}
 	return &Connection{
-		conn,
-		bufio.NewReaderSize(conn, 4 << 10),
 		lr,
-		bufio.NewWriterSize(conn, 4 << 10), // 写缓冲大小为4kb
+		bufio.NewReaderSize(lr, ReadWriteBufferSize),
+		bufio.NewWriterSize(conn, ReadWriteBufferSize),
+		conn,
 		server,
 	}
 }
 
 // 处理每一条 Connection 连接
-func (c *Connection) serve() {
+func (c *Connection) handle() {
 	defer c.Close()
 	defer func() {
 		if err := recover(); err != nil {
@@ -50,7 +54,7 @@ func (c *Connection) serve() {
 		// 解析 Request
 		request, err := requestParse(c)
 		if err != nil {
-			slog.Error("parsing http request failed: %v", err.Error())
+			fmt.Printf("parsing http request failed: %s \n", err.Error())
 			return
 		}
 		// 设置 Response

@@ -8,6 +8,13 @@ const CRLF = "\r\n"
 const CRLF2 = "\r\n\r\n"
 const headSep = ':'
 
+const (
+	// ReadWriteBufferSize 连接的读写缓冲大小
+	ReadWriteBufferSize = 4 << 10
+	// ConnReadLimitSize 最多从连接中读取的数据量
+	ConnReadLimitSize = 1 << 20
+)
+
 // HTTP Methods
 const (
 	GET     = "GET"
@@ -27,8 +34,7 @@ const (
 	ContentLength = "Content-Length"
 	// TransferEncoding 请求体编码格式
 	TransferEncoding = "Transfer-Encoding"
-	Expect = "Expect"
-
+	Expect           = "Expect"
 )
 
 // HTTP Request Header Values

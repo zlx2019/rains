@@ -78,6 +78,7 @@ func (req *Request) requestLineParse() (e error) {
 	if e != nil {
 		return
 	}
+	// TODO 校验请求行是否规范
 	// 解析Query请求参数
 	e = req.requestQueryParse()
 	return
