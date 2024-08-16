@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"io"
 	"net/url"
 	"strings"
 )
@@ -16,14 +17,19 @@ import (
 
 // Request 表示 HTTP 请求信息
 type Request struct {
-	//======= 请求行 ========
+	// ========= 请求行 ===========
 	Method     string // 请求方法
 	RequestURI string // 请求的资源Uri
 	Protocol   string // 协议以及版本
+	// ===========================
+	// ========== 请求头===========
+	Headers Headers
+	// ===========================
+	// ========== 请求体 ==========
+	Body    RequestBody
+	// ===========================
 
-	Headers Headers     // 请求头
-	Body    RequestBody // 请求体
-
+	// 其他数据
 	Url         *url.URL    // 请求URL
 	RemoteAddr  string      // 客户端地址信息
 	queryParams Query       // Query 查询信息
@@ -31,37 +37,28 @@ type Request struct {
 	conn        *Connection // 客户端连接
 }
 
-// RequestParse
-// 从流中读取字节流，解析为 Request 请求体.
+// RequestParse 从流中读取字节流，解析为 Request 请求体.
 // HTTP 协议请求报文，分为三个部分:
 //   - 请求行\r\n
 //   - 请求头\r\n
 //   - \r\n
 //   - 请求体
-func RequestParse(c *Connection) (req *Request, err error) {
+func requestParse(c *Connection) (req *Request, err error) {
+	// 初始化 HTTP Request
 	req = new(Request)
 	req.conn = c
 	req.RemoteAddr = c.RemoteAddr().String()
-
 	// 解析请求行
-	req.Method, req.RequestURI, req.Protocol, err = requestLineParse(c.bufR)
-	if err != nil {
+	if err = req.requestLineParse(); err != nil {
 		return
 	}
-
-	// 解析Query请求参数
-	if err = req.requestQueryParse(); err != nil {
-		return
-	}
-
 	// 解析请求头
 	req.Headers, err = requestHeadersParse(c.bufR)
 	if err != nil {
 		return
 	}
-
-	//req.Body = newResponse(c)
-
+	// 解析请求体
+	req.RequestBodyParse()
 	return
 }
 
@@ -71,13 +68,18 @@ func RequestParse(c *Connection) (req *Request, err error) {
 // +--------+---------+----------+
 // | GET    | /index  | HTTP/1.1 |
 // +--------+---------+----------+
-func requestLineParse(reader *bufio.Reader) (m string, u string, v string, e error) {
-	line, e := readLine(reader)
+func (req *Request) requestLineParse() (e error) {
+	line, e := readLine(req.conn.bufR)
 	if e != nil {
 		return
 	}
 	// 按空格分割，得到 Method、URL、Version
-	_, e = fmt.Sscanf(string(line), "%s%s%s", &m, &u, &v)
+	_, e = fmt.Sscanf(string(line), "%s%s%s", &req.Method, &req.RequestURI, &req.Protocol)
+	if e != nil {
+		return
+	}
+	// 解析Query请求参数
+	e = req.requestQueryParse()
 	return
 }
 
@@ -110,6 +112,17 @@ func requestHeadersParse(reader *bufio.Reader) (Headers, error) {
 		header[key] = append(header[key], value)
 	}
 	return header, nil
+}
+
+// HTTP 请求完成后的处理，如果请求体未读取需要清理掉，避免污染下一个报文的解析
+func (req *Request) finish() (err error) {
+	// 将缓冲里还剩的数据，刷新到客户端
+	if err = req.conn.bufW.Flush(); err != nil {
+		return err
+	}
+	// 丢弃请求体中剩余的数据
+	_, err = io.Copy(io.Discard, req.Body)
+	return
 }
 
 

@@ -11,7 +11,7 @@ type response struct {
 }
 
 // 为客户端连接分配响应流
-func wrapResponse(c *Connection) *response{
+func mountResponse(c *Connection) *response{
 	return &response{c}
 }
 

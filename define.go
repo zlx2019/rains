@@ -25,4 +25,18 @@ const (
 const (
 	// ContentLength 请求正文长度
 	ContentLength = "Content-Length"
+	// TransferEncoding 请求体编码格式
+	TransferEncoding = "Transfer-Encoding"
+	Expect = "Expect"
+
+)
+
+// HTTP Request Header Values
+const (
+	ExpectValue = "100-continue"
+)
+
+const (
+	// 允许客户端发送请求体的报文
+	continueMessage = "HTTP/1.1 100 Continue\r\n\r\n"
 )

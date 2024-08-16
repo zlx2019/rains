@@ -36,30 +36,29 @@ func wrapConn(conn net.Conn, server *Server) *Connection {
 	}
 }
 
-// 连接处理逻辑
+// 处理每一条 Connection 连接
 func (c *Connection) serve() {
 	defer c.Close()
-	// panic handler
 	defer func() {
 		if err := recover(); err != nil {
 			slog.Error("conn panic err: %v", err)
 		}
 		_ = c.Close()
 	}()
-	// keep-alive 长连接处理
-
+	// HTTP/1.1 支持 Keep-alive 长连接，暂时使用 for 不停的解析 HTTP 请求
 	for i := 0; i < 1; i++ {
-		// 读取连接数据流，解析为 HTTP Request
-		req, err := RequestParse(c)
+		// 解析 Request
+		request, err := requestParse(c)
 		if err != nil {
-			slog.Error("conn unpack request err: %v", err)
+			slog.Error("parsing http request failed: %v", err.Error())
 			return
 		}
-		// 分配连接响应流
-		response := wrapResponse(c)
-		// 处理 HTTP 请求
-		c.serv.Handler.Handle(response, req)
-		if err = c.bufW.Flush(); err != nil {
+		// 设置 Response
+		response := mountResponse(c)
+		// 通过外部传入的 处理器来处理HTTP请求
+		c.serv.Handler.Handle(response, request)
+		// 请求完成，清理
+		if err = request.finish(); err != nil {
 			return
 		}
 	}

@@ -1,5 +1,5 @@
 # Rains
-Go HTTP framework.
+HTTP server based on TCP
 
 参考:
 - [手动实现Go HTTP框架](https://gufeijun.com/post/httpframe/3/)
