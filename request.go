@@ -17,24 +17,24 @@ import (
 
 // Request 表示 HTTP 请求信息
 type Request struct {
-	// ========= 请求行 ===========
-	Method     string // 请求方法
-	RequestURI string // 请求的资源Uri
-	Protocol   string // 协议以及版本
-	// ===========================
-	// ========== 请求头===========
-	Headers Headers
-	// ===========================
-	// ========== 请求体 ==========
-	Body    RequestBody
-	// ===========================
+	//  请求行
+	Method     string      // 请求方法
+	RequestURI string      // 请求的资源Uri
+	Protocol   string      // 协议以及版本
+	Headers    Headers     // 请求头
+	Body       RequestBody // 请求体
 
 	// 其他数据
 	Url         *url.URL    // 请求URL
 	RemoteAddr  string      // 客户端地址信息
+
+	// private
 	queryParams Query       // Query 查询信息
 	cookies     Cookie      // Cookie
 	conn        *Connection // 客户端连接
+	keepAlive	bool		// 连接是否为长连接
+	contentType	string		// 请求头 `Content-Type`
+
 }
 
 // RequestParse 从流中读取字节流，解析为 Request 请求体.
@@ -125,8 +125,6 @@ func (req *Request) finish() (err error) {
 	_, err = io.Copy(io.Discard, req.Body)
 	return
 }
-
-
 
 // 从流中读取一行内容
 func readLine(reader *bufio.Reader) ([]byte, error) {

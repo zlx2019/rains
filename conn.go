@@ -42,7 +42,6 @@ func wrapConn(conn net.Conn, server *Server) *Connection {
 
 // 处理每一条 Connection 连接
 func (c *Connection) handle() {
-	defer c.Close()
 	defer func() {
 		if err := recover(); err != nil {
 			slog.Error("conn panic err: %v", err)
